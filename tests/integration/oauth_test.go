@@ -66,6 +66,8 @@ func TestOAuth2AvatarFromPicture(t *testing.T) {
 	t.Run("AutoRegister", func(t *testing.T) {
 		defer test.MockVariableValue(&setting.OAuth2Client.Username, "")()
 		defer test.MockVariableValue(&setting.OAuth2Client.EnableAutoRegistration, true)()
+		session := emptyTestSession(t)
+		session.MakeRequest(t, NewRequest(t, "GET", "/user/oauth2/test-oidc-avatar"), http.StatusTemporaryRedirect)
 		defer test.MockVariableValue(&gothic.CompleteUserAuth, func(res http.ResponseWriter, req *http.Request) (goth.User, error) {
 			return goth.User{
 				Provider:  providerName,
@@ -77,7 +79,7 @@ func TestOAuth2AvatarFromPicture(t *testing.T) {
 		})()
 
 		req := NewRequest(t, "GET", "/user/oauth2/test-oidc-avatar/callback?code=XYZ&state=XYZ")
-		emptyTestSession(t).MakeRequest(t, req, http.StatusSeeOther)
+		session.MakeRequest(t, req, http.StatusSeeOther)
 
 		user := unittest.AssertExistsAndLoadBean(t, &user_model.User{LoginName: "oidc-user-ua-pic"})
 		assert.True(t, user.UseCustomAvatar, "avatar must sync (requires Gitea UA)")
@@ -1455,11 +1457,12 @@ func testSignInOauthCallbackSyncSSHKeys(t *testing.T) {
 		},
 	}
 
-	session := emptyTestSession(t)
 	for _, c := range cases {
 		t.Run(c.testName, func(t *testing.T) {
 			defer test.MockVariableValue(&setting.OAuth2Client.Username, "")()
 			defer test.MockVariableValue(&setting.OAuth2Client.EnableAutoRegistration, true)()
+			session := emptyTestSession(t)
+			session.MakeRequest(t, NewRequest(t, "GET", "/user/oauth2/test-oidc-source"), http.StatusTemporaryRedirect)
 			defer test.MockVariableValue(&gothic.CompleteUserAuth, func(res http.ResponseWriter, req *http.Request) (goth.User, error) {
 				return goth.User{
 					Provider: authSourceCfg.Provider,
